@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
         async def step(choice: Optional[int] = None):
             line_width = 0
-            async for bit in story.generate_next_bit(choice):
+            async for bit in story.generate(choice):
                 line_width += len(bit)
                 start = ""
                 if bit == "\n":
@@ -22,8 +22,6 @@ if __name__ == "__main__":
                     line_width = 0
                 console.print(start + bit, end="")
             console.print("\n")
-            with console.status("Updating synopsis..."):
-                await story.generate_next_synopsis_item()
 
         await step()
         while True:

@@ -1,4 +1,5 @@
 import os
+
 import openai
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -43,18 +44,7 @@ class Story:
         self.question = ""
         self.chapter = 0
 
-    async def generate_next_synopsis_item(self):
-        prompt = ""
-        if len(self.synopsis) > 0:
-            prompt += self._format_synopsis()
-        prompt += "\n\nAdd one bullet point summarizing the following. Do not extend the story to include new details.\n"
-        prompt += self.story_parts[-1]
-        res = ""
-        async for p in self._get_completion(prompt):
-            res += p
-        self.synopsis.append(res)
-
-    async def generate_next_bit(self, choice: int = -1):
+    async def generate(self, choice: int = -1):
         prompt = ""
         if len(self.synopsis) > 0:
             prompt += self._format_synopsis()
@@ -62,7 +52,7 @@ class Story:
             prompt = self._seed_prompt()
         if choice and choice != -1:
             prompt += (
-                f"\n\nAt the end of the last chapter I was asked \"{self.question}\". I selected \"{self.choices[choice-1]}\".\n\n"
+                f"\n\nAt the end of the last chapter I was asked \"{self.question}\". I selected \"{self.choices[choice - 1]}\".\n\n"
                 f"Continue with the next chapter of the book, entitled \"{chapter_titles[self.chapter]}\", "
                 f"in which {chapters[chapter_titles[self.chapter]]}.\n\n"
             )
@@ -87,6 +77,18 @@ class Story:
             self.question = lines[-5]
             self.choices = lines[-3:]
             self.chapter += 1
+        await self._generate_next_synopsis_item()
+
+    async def _generate_next_synopsis_item(self):
+        prompt = ""
+        if len(self.synopsis) > 0:
+            prompt += self._format_synopsis()
+        prompt += "\n\nAdd one bullet point summarizing the following. Do not extend the story to include new details.\n"
+        prompt += self.story_parts[-1]
+        res = ""
+        async for p in self._get_completion(prompt):
+            res += p
+        self.synopsis.append(res)
 
     async def _get_completion(self, prompt: str):
         async for part in await openai.Completion.acreate(
@@ -114,6 +116,3 @@ class Story:
                    f"In the first {chunk_size} words, write the chapter entitled {chapter_titles[0]}, in which {chapters[chapter_titles[0]]}.\n"
                    "Then write a multiple-choice question that lets me decide what happens next.\n"
                ) + question_prompt
-
-    def last_story(self):
-        return self.story_parts[-1]
